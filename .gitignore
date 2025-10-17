@@ -1,0 +1,5 @@
+docs/*
+*.age
+age-yubikey-identity-*.txt
+Rakefile.local
+ssh-ca

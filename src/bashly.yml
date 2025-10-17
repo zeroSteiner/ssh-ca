@@ -1,0 +1,222 @@
+name: ssh-ca
+help: SSH CA management
+version: 0.1.0
+
+flags:
+- long: --trace
+  help: Trace execution with 'set -x'
+
+commands:
+- name: install-dependencies
+  alias: install-deps
+  help: Install dependencies
+  dependencies:
+    dnf: "dnf must be available for installing dependencies"
+    curl: "curl must be available for installing dependencies"
+    sha256sum: "sha256sum must be available for installing dependencies"
+
+- name: initialize
+  alias: init
+  help: Initialize a new SSH CA key
+  dependencies:
+    age: "install with the install-dependencies command"
+    age-plugin-yubikey: "install with the install-dependencies command"
+    openssl: "install with the install-dependencies command"
+    psql: "install with the install-dependencies command"
+    ssh-keygen: "install with the install-dependencies command"
+    ykman: "install with the install-dependencies command"
+    yubico-piv-tool: "install with the install-dependencies command"
+
+  flags:
+  - long: --age-key-slot
+    arg: age-key-slot
+    help: The age key slot to use
+    default: "1"
+
+  - &database
+    long: --database
+    arg: database
+    help: The database connection URI
+    default: ""
+    validate: database_connection
+
+  - long: --description
+    arg: description
+    help: The new CA key description
+
+  - long: --yk-pin-policy
+    arg: yk-pin-policy
+    help: The Yubikey PIN policy to use
+    default: ONCE
+    allowed: [NEVER, ONCE, ALWAYS]
+
+  - long: --yk-piv-slot
+    arg: yk-piv-slot
+    help: The Yubikey PIV slot to use
+    default: "83"
+
+  - long: --yk-touch-policy
+    arg: yk-touch-policy
+    help: The Yubikey touch policy to use
+    default: ALWAYS
+    allowed: [NEVER, CACHED, ALWAYS]
+
+  args:
+  - name: filename
+    required: true
+    help: The base file name for the generated files
+
+  - name: key-type
+    required: true
+    help: The key type to generate
+    allowed: [RSA2048, RSA3072, ECCP256, ECCP384]
+
+  - name: yubikey-serial
+    required: true
+    help: Yubikey serial numbers to use
+    repeatable: true
+    validate: yubikey_serial_exists
+
+- name: export
+  help: Export an SSH public key or certificate
+  dependencies:
+    psql: "install with the install-dependencies command"
+  flags:
+  - *database
+
+  args:
+  - name: fingerprint
+    required: true
+    help: The fingerprint to export
+
+- name: list
+  help: List imported public keys and certificates
+  dependencies:
+    psql: "install with the install-dependencies command"
+  flags:
+  - *database
+
+- name: show-certificate
+  help: Show an SSH certificate
+  dependencies:
+    psql: "install with the install-dependencies command"
+    ssh-keygen: "install with the install-dependencies command"
+  flags:
+  - *database
+
+  args:
+  - name: fingerprint
+    required: true
+    help: The certificate fingerprint to show
+
+- name: sign-host
+  help: Sign a host key
+  dependencies:
+    psql: "install with the install-dependencies command"
+    ssh-keygen: "install with the install-dependencies command"
+    yubico-piv-tool: "install with the install-dependencies command"
+
+  flags:
+  - *database
+
+  - &description_signing_option
+    long: --description
+    arg: description
+    help: The certificate description
+
+  - &principal_signing_option
+    short: -p
+    long: --principal
+    arg: principal
+    help: The principal to add to the certificate
+    repeatable: true
+    validate: is_principal_name
+
+  - &validity_interval_signing_option
+    short: -V
+    long: --validity
+    arg: validity-interval
+    help: The validity period for the signed certificate
+    validate: is_valid_validity_interval
+
+  args:
+  - name: ca-public-key
+    required: true
+    help: The CA's public key with which to sign
+    validate: is_openssh_public_key
+
+  - name: host-public-key
+    required: true
+    help: The host's public key to sign
+    validate: is_openssh_public_key
+
+  - name: host-identity
+    required: true
+    help: The host's identity
+
+- name: sign-user
+  help: Sign a user key
+  dependencies:
+    psql: "install with the install-dependencies command"
+    ssh-keygen: "install with the install-dependencies command"
+    yubico-piv-tool: "install with the install-dependencies command"
+
+  variables:
+  - name: default_signing_options
+    value: &default_signing_options
+      - permit-agent-forwarding
+      - permit-port-forwarding
+      - permit-pty
+
+  flags:
+  - *database
+
+  - *description_signing_option
+
+  - long: --option
+    arg: option
+    help: Options to add to the certificate
+    repeatable: true
+    validate: is_valid_signing_option
+    default: *default_signing_options
+
+  - *principal_signing_option
+
+  - *validity_interval_signing_option
+
+  args:
+  - name: ca-public-key
+    required: true
+    help: The CA's public key with which to sign
+    validate: is_openssh_public_key
+
+  - name: user-public-key
+    required: true
+    help: The user's public key to sign
+    validate: is_openssh_public_key
+
+  - name: user-identity
+    required: true
+    help: The user's identity
+
+- name: upsert
+  help: Upsert a file in to the database
+  dependencies:
+    psql: "install with the install-dependencies command"
+  flags:
+  - *database
+
+  - long: --description
+    arg: description
+    help: The file description
+
+  commands:
+  - name: public-key
+    alias: pkey
+    help: Upsert an OpenSSH public key
+
+    args:
+    - name: public-key
+      required: true
+      help: The SSH public key to upsert
+      validate: is_openssh_public_key
