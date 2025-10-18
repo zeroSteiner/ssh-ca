@@ -36,20 +36,4 @@ task :install do
   end
 end
 
-namespace :docs do
-  task all: %i[ mandoc markdown ]
-
-  task :mandoc do
-    puts "building mandoc pages..."
-    sh "bashly render :mandoc docs/mandoc"
-  end
-  task :man => :mandoc
-
-  task :markdown do
-    puts "building markdown pages..."
-    sh "bashly render :markdown docs/markdown"
-  end
-  task :md => :markdown
-end
-
-import 'Rakefile.local' if File.exist?('Rakefile.local')
+Dir.glob('tasks/*.rake').sort.each { |r| import r }
