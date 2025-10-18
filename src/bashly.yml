@@ -1,6 +1,6 @@
 name: ssh-ca
 help: SSH CA management
-version: 0.1.0
+version: 0.2.0
 
 flags:
 - long: --trace
