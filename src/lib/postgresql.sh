@@ -11,67 +11,62 @@ _psql() {
     psql "$database_uri" --set ON_ERROR_STOP=1 "${psql_args[@]}"
 }
 
-psql_initialize() {
-    _psql <<'EOF'
-        SET client_min_messages = WARNING;
-
-        CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-        CREATE OR REPLACE FUNCTION set_data_sha256()
-        RETURNS TRIGGER AS $$
-        BEGIN
-            NEW.data_sha256 := digest(NEW.data, 'sha256');
-            RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
-
-        --
-        -- create table public_keys
-        --
-        CREATE TABLE IF NOT EXISTS public_keys (
-            id SERIAL PRIMARY KEY,
-            created_on DATE DEFAULT CURRENT_DATE,
-            type VARCHAR(20) NOT NULL,
-            data BYTEA UNIQUE NOT NULL,
-            data_sha256 BYTEA UNIQUE NOT NULL,
-            comment TEXT,
-            description TEXT
-        );
-
-        CREATE OR REPLACE TRIGGER update_public_key_sha256
-        BEFORE INSERT OR UPDATE ON public_keys
-        FOR EACH ROW
-        EXECUTE FUNCTION set_data_sha256();
-
-        --
-        -- create table certificates
-        --
-        CREATE TABLE IF NOT EXISTS certificates (
-            id SERIAL PRIMARY KEY,
-            created_on DATE DEFAULT CURRENT_DATE,
-            type VARCHAR(40) NOT NULL,
-            data BYTEA UNIQUE NOT NULL,
-            data_sha256 BYTEA UNIQUE NOT NULL,
-            comment TEXT,
-            class CHAR(4) NOT NULL,
-            description TEXT,
-            ca_public_key_id INTEGER,
-            public_key_id INTEGER,
-            CONSTRAINT fk_ca_public_key
-                FOREIGN KEY (ca_public_key_id)
-                REFERENCES public_keys(id)
-                ON DELETE CASCADE,
-            CONSTRAINT fk_public_key
-                FOREIGN KEY (public_key_id)
-                REFERENCES public_keys(id)
-                ON DELETE CASCADE
-        );
-
-        CREATE OR REPLACE TRIGGER update_certificate_sha256
-        BEFORE INSERT OR UPDATE ON certificates
-        FOR EACH ROW
-        EXECUTE FUNCTION set_data_sha256();
+psql_current_schema_version() {
+    local version=$(_psql -tA 2>/dev/null <<'EOF'
+SELECT schema_version FROM metadata LIMIT 1;
 EOF
+    )
+
+    # If we got a version, return it
+    if [ -n "$version" ]; then
+        echo "$version"
+        return
+    fi
+
+    # Check if public_keys exists
+    if _psql -tA <<'EOF' | grep -q 't'
+SELECT EXISTS (
+    SELECT FROM information_schema.tables
+    WHERE table_schema = 'public'
+    AND table_name = 'public_keys'
+);
+EOF
+    then
+        echo 1
+        return
+    fi
+
+    echo 0
+    return
+}
+
+psql_latest_schema_version() {
+    local version=1
+    while declare -f $(printf "initialize_schema_v%03d" "$version") > /dev/null; do
+        ((version++))
+    done
+    echo $((version - 1))
+}
+
+psql_initialize() {
+    local current_version=$(psql_current_schema_version)
+    local latest_version=$(psql_latest_schema_version)
+
+    if [ "$current_version" -ge "$latest_version" ]; then
+        return 0
+    fi
+
+    printf "Migrating database schema from v$current_version to v$latest_version"
+
+    local num_migrations=$((latest_version - current_version))
+
+    # Run each migration in sequence
+    for ((version=current_version+1; version<=latest_version; version++)); do
+        local function_name=$(printf "initialize_schema_v%03d" "$version")
+
+        echo "Running database migration: ${function_name}"
+        "$function_name" &>/dev/null
+    done
 }
 
 # usage: psql_export_certificate $fingerprint
