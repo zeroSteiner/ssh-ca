@@ -1,8 +1,5 @@
 _psql() {
     psql_args=("$@")
-    if [[ -v args[--trace] ]]; then
-        psql_args=("--echo-queries" "${psql_args[@]}")
-    fi
     if [[ -v args[--database] && "${args[--database]}" ]]; then
         database_uri="${args[--database]}"
     elif [[ -v SSH_CA_DATABASE_URI ]]; then
@@ -12,12 +9,8 @@ _psql() {
 }
 
 psql_current_schema_version() {
-    local version=$(_psql -tA 2>/dev/null <<'EOF'
-SELECT schema_version FROM metadata LIMIT 1;
-EOF
-    )
+    local version=$(_psql -tAc 'SELECT schema_version FROM metadata LIMIT 1;' 2> /dev/null)
 
-    # If we got a version, return it
     if [ -n "$version" ]; then
         echo "$version"
         return
@@ -49,14 +42,14 @@ psql_latest_schema_version() {
 }
 
 psql_initialize() {
-    local current_version=$(psql_current_schema_version)
-    local latest_version=$(psql_latest_schema_version)
+    local current_version="$(psql_current_schema_version)"
+    local latest_version="$(psql_latest_schema_version)"
 
     if [ "$current_version" -ge "$latest_version" ]; then
         return 0
     fi
 
-    printf "Migrating database schema from v$current_version to v$latest_version"
+    printf "Migrating database schema from $current_version -> $latest_version\n"
 
     local num_migrations=$((latest_version - current_version))
 
@@ -107,6 +100,41 @@ psql_export() {
         FROM certificates
         WHERE regexp_replace(concat('SHA256:', encode(data_sha256, 'base64')), '=+$', '') = :'fingerprint'
         LIMIT 1
+EOF
+}
+
+# usage:psql_insert_encrypted_private_keys "$ca_priv_key" "$ca_pub_key" "${recipients[@]}"
+psql_insert_encrypted_private_keys() {
+    local encrypted_file="$1"
+    local public_key_file="$2"
+    shift 2
+    local recipients=("$@")
+
+    local data_sha256=$(sha256sum "$encrypted_file" | cut -d' ' -f1)
+
+    local filename=$(basename "$encrypted_file")
+
+    read -r public_key_type public_key public_key_comment < "$public_key_file"
+
+    local recipients_sql="{"
+    for recipient in "${recipients[@]}"; do
+        recipients_sql+="$recipient,"
+    done
+    recipients_sql="${recipients_sql%,}}"  # Remove trailing comma and close
+
+    _psql \
+        -v data_sha256="$data_sha256" \
+        -v filename="$filename" \
+        -v public_key="$public_key" \
+        -v recipients="$recipients_sql" \
+        <<'EOF'
+        INSERT INTO encrypted_private_keys (data_sha256, filename, recipients, public_key_id)
+        VALUES (
+            decode(:'data_sha256', 'hex'),
+            :'filename',
+            :'recipients'::text[],
+            (SELECT id FROM public_keys WHERE data = decode(:'public_key', 'base64') LIMIT 1)
+        );
 EOF
 }
 

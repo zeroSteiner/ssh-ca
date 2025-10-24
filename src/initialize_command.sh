@@ -61,3 +61,10 @@ unset recipient_args
 rm "$ca_priv_key"
 
 psql_upsert_public_key "$ca_pub_key" "${args[--description]:-}" > /dev/null
+
+recipient_args=()
+for serial in "${yubikey_serials[@]}"; do
+    recipient_args+=("${age_recipients[$serial]}")
+done
+psql_insert_encrypted_private_keys "${ca_priv_key}.age" "$ca_pub_key" "${recipient_args[@]}" > /dev/null
+unset recipient_args
