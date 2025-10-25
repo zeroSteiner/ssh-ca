@@ -18,7 +18,7 @@ commands:
 - name: initialize
   alias: init
   help: Initialize a new SSH CA key
-  dependencies:
+  dependencies: &initialize-dependencies
     age: "install with the install-dependencies command"
     age-plugin-yubikey: "install with the install-dependencies command"
     openssl: "install with the install-dependencies command"
@@ -46,18 +46,18 @@ commands:
 
   - long: --yk-pin-policy
     arg: yk-pin-policy
-    help: The Yubikey PIN policy to use
+    help: The YubiKey PIN policy to use
     default: ONCE
     allowed: [NEVER, ONCE, ALWAYS]
 
   - long: --yk-piv-slot
     arg: yk-piv-slot
-    help: The Yubikey PIV slot to use
+    help: The YubiKey PIV slot to use
     default: "83"
 
   - long: --yk-touch-policy
     arg: yk-touch-policy
-    help: The Yubikey touch policy to use
+    help: The YubiKey touch policy to use
     default: ALWAYS
     allowed: [NEVER, CACHED, ALWAYS]
 
@@ -73,7 +73,7 @@ commands:
 
   - name: yubikey-serial
     required: true
-    help: Yubikey serial numbers to use
+    help: YubiKey serial numbers to use
     repeatable: true
     validate: yubikey_serial_exists
 

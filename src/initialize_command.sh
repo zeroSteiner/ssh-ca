@@ -13,7 +13,7 @@ for serial in "${yubikey_serials[@]}"; do
   age_recipients["$serial"]=$(age-plugin-yubikey --serial "$serial" --slot "${args[--age-key-slot]}" --list | grep '^age1')
 done
 
-echo "Yubikey age recipients:"
+echo "YubiKey age recipients:"
 for serial in "${yubikey_serials[@]}"; do
   echo "  * Serial: $serial -> ${age_recipients[$serial]}"
 done

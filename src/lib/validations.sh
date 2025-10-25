@@ -6,6 +6,20 @@ validate_database_connection() {
     _psql <<< "SELECT 1" &> /dev/null || echo "database connection failed"
 }
 
+validate_file_exists() {
+    local file="$1"
+
+    if [ ! -e "$file" ]; then
+        echo "file does not exist: $file" >&2
+        return 1
+    fi
+
+    if [ ! -r "$file" ]; then
+        echo "file exists but is not readable: $file" >&2
+        return 1
+    fi
+}
+
 validate_is_openssh_public_key() {
     file -Lb "$1" | grep -Ei 'OpenSSH \w+ public key' &> /dev/null || echo "invalid OpenSSH public key: $1 (not a public key)"
     if [[ ! "$1" =~ \.pub$ ]]; then
