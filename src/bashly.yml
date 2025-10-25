@@ -77,6 +77,56 @@ commands:
     repeatable: true
     validate: yubikey_serial_exists
 
+- name: clone
+  help: Clone a previously initialized CA key to a new YubiKey
+  dependencies: *initialize-dependencies
+
+  flags:
+  - long: --age-key-slot
+    arg: age-key-slot
+    help: The age key slot to use
+    default: "1"
+
+  - &database
+    long: --database
+    arg: database
+    help: The database connection URI
+    default: ""
+    validate: database_connection
+
+  - long: --yk-pin-policy
+    arg: yk-pin-policy
+    help: The YubiKey PIN policy to use
+    default: ONCE
+    allowed: [NEVER, ONCE, ALWAYS]
+
+  - long: --yk-piv-slot
+    arg: yk-piv-slot
+    help: The YubiKey PIV slot to use
+    default: "83"
+
+  - long: --yk-touch-policy
+    arg: yk-touch-policy
+    help: The YubiKey touch policy to use
+    default: ALWAYS
+    allowed: [NEVER, CACHED, ALWAYS]
+
+  args:
+  - name: filename
+    required: true
+    validate: file_exists
+    help: The name for the age file to import
+
+  - name: yubikey-src-serial
+    required: true
+    help: The source YubiKey's serial number
+    validate: yubikey_serial_exists
+
+  - name: yubikey-dst-serial
+    required: true
+    help: The destination YubiKey's serial number
+    validate: yubikey_serial_exists
+
 - name: export
   help: Export an SSH public key or certificate
   dependencies:
