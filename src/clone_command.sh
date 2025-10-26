@@ -1,5 +1,3 @@
-age -i <(age-plugin-yubikey --serial "${args[yubikey-src-serial]}" --slot "${args[--age-key-slot]}" --identity 2>/dev/null) --decrypt "${args[filename]}"
-
 get_recipients() {
     local data_sha256=$(sha256sum "${args[filename]}" | cut -d' ' -f1)
     _psql -tA \
@@ -8,6 +6,25 @@ get_recipients() {
         SELECT unnest(recipients) FROM encrypted_private_keys WHERE data_sha256 = decode(:'data_sha256', 'hex');
 EOF
 }
+
+echo "Info: Extracting the identity from the source YubiKey." >&2
+if ! src_identity="$(age-plugin-yubikey --serial "${args[yubikey-src-serial]}" --slot "${args[--age-key-slot]}" --identity 2>/dev/null)"; then
+    echo "Error: Failed to extract the identity from the source YubiKey" >&2
+    exit 1
+fi
+
+echo "Info: Decrypting the CA private key." >&2
+if ! ca_priv_key="$(age -i <(echo "$src_identity") --decrypt "${args[filename]}" 2>/dev/null)"; then
+    echo "Error: Failed to decrypt the CA private key" >&2
+    exit 1
+fi
+
+echo "Info: Importing the CA private key into the YubiKey PIV module." >&2
+ykman --device "${args[yubikey-dst-serial]}" piv keys import \
+    --pin-policy "${args[--yk-pin-policy]}" \
+    --touch-policy "${args[--yk-touch-policy]}" \
+    "${args[--yk-piv-slot]}" \
+    <(echo "$ca_priv_key")
 
 mapfile -t age_recipients < <(get_recipients)
 

@@ -44,6 +44,7 @@ unset keygen_args
 ssh-keygen -i -m PKCS8 -f <(openssl pkey -in "$ca_priv_key" -pubout) > "$ca_pub_key"
 chmod 0600 "$ca_pub_key"
 
+echo "Info: Importing the CA private key into the YubiKey PIV module." >&2
 for serial in "${yubikey_serials[@]}"; do
   ykman --device "$serial" piv keys import \
     --pin-policy "${args[--yk-pin-policy]}" \
@@ -56,6 +57,8 @@ recipient_args=()
 for serial in "${yubikey_serials[@]}"; do
   recipient_args+=("--recipient" "${age_recipients[$serial]}")
 done
+
+echo "Info: Encrypting the CA private key for future cloning." >&2
 age --encrypt "${recipient_args[@]}" -o "${ca_priv_key}.age" "$ca_priv_key"
 unset recipient_args
 rm "$ca_priv_key"
