@@ -20,6 +20,23 @@ validate_file_exists() {
     fi
 }
 
+validate_file_writable() {
+    local path="$1"
+
+    if [ -e "$path" ]; then
+        if [ ! -w "$path" ]; then
+            echo "path exists but is not writable: $path" >&2
+            return 1
+        fi
+    else
+        local dir=$(dirname "$path")
+        if [ ! -w "$dir" ]; then
+            echo "cannot create file - directory not writable: $dir" >&2
+            return 1
+        fi
+    fi
+}
+
 validate_is_openssh_public_key() {
     file -Lb "$1" | grep -Ei 'OpenSSH \w+ public key' &> /dev/null || echo "invalid OpenSSH public key: $1 (not a public key)"
     if [[ ! "$1" =~ \.pub$ ]]; then

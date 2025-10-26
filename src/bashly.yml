@@ -111,6 +111,12 @@ commands:
     default: ALWAYS
     allowed: [NEVER, CACHED, ALWAYS]
 
+  - long: --new-filename
+    arg: new-filename
+    help: The file to write the encrypted CA to with updated recipients
+    default: ""
+    validate: file_writable
+
   args:
   - name: filename
     required: true
