@@ -64,18 +64,30 @@ fi
 if [ -z "${args[--new-filename]}" ]; then
     if [ -w "${args[filename]}" ]; then
         if mv "$output_file" "${args[filename]}"; then
+            output_file="${args[filename]}"
             echo "Info: New encrypted CA private key stored in: ${args[filename]}"
         else
             echo "Error: Failed to overwrite the source CA file." >&2
-            echo "Error: New encrypted CA private key stored in: $output_file"
+            echo "Error: New encrypted CA private key stored in: $output_file" >&2
         fi
     else
         echo "Error: Original file can not be overwritten." >&2
-        echo "Error: New encrypted CA private key stored in: $output_file"
+        echo "Error: New encrypted CA private key stored in: $output_file" >&2
     fi
 fi
-
 unset recipient_args
+
+ca_pub_key=$(mktemp --suffix=".pub")
+echo "Info: Writing CA public key to temporary file: $ca_pub_key" >&2
+ssh-keygen -i -m PKCS8 -f <(openssl pkey -in <(echo "$ca_priv_key") -pubout) > $ca_pub_key
 unset ca_priv_key
 
-# todo: upload the keys to the db with the new sha256 and recipients
+recipient_args=()
+for recipient in "${age_recipients[@]}"; do
+  recipient_args+=("$recipient")
+done
+psql_insert_encrypted_private_keys "$output_file" "$ca_pub_key" "${recipient_args[@]}" > /dev/null
+unset recipient_args
+
+rm "$ca_pub_key"
+unset ca_pub_key
