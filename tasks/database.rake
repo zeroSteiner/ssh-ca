@@ -4,6 +4,7 @@ namespace :db do
   DB_USER = 'sshkeys'
   DB_PASS = 'development'
   DB_PORT = 5432
+  CONNECTION_STRING="postgresql://#{DB_USER}:#{DB_PASS}@localhost:#{DB_PORT}/#{DB_NAME}".freeze
   IMAGE = 'docker.io/postgres:16-alpine'
 
   desc "Pull PostgreSQL image"
@@ -35,7 +36,7 @@ namespace :db do
           -p #{DB_PORT}:5432 \
           #{IMAGE}
       CMD
-      
+
       puts "Waiting for PostgreSQL to be ready..."
       max_attempts = 30
       attempts = 0
@@ -45,15 +46,15 @@ namespace :db do
         print "."
       end
       puts
-      
+
       if attempts >= max_attempts
         puts "ERROR: PostgreSQL failed to start within 30 seconds"
         exit 1
       end
     end
-    
+
     puts "\nConnection string:"
-    puts "export SSH_CA_DATABASE_URI=\"postgresql://#{DB_USER}:#{DB_PASS}@localhost:#{DB_PORT}/#{DB_NAME}\""
+    puts "export SSH_CA_DATABASE_URI=\"#{CONNECTION_STRING}\""
   end
 
   desc "Stop PostgreSQL database container"
@@ -78,4 +79,9 @@ namespace :db do
 
   desc "Reset database (stop, remove, and start fresh)"
   task :reset => [:remove, :start]
+
+  desc "Start an interactive console session"
+  task :console => :start do
+    sh "psql \"#{CONNECTION_STRING}\""
+  end
 end
