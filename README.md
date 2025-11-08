@@ -20,8 +20,6 @@ This is an implementation of an SSH CA with additional logic to enable storage o
 The `ssh-ca` offers a CLI interface.
 
 ```
-ssh-ca - SSH CA management
-
 Usage:
   ssh-ca [OPTIONS] COMMAND
   ssh-ca [COMMAND] --help | -h
@@ -30,6 +28,8 @@ Usage:
 Commands:
   install-dependencies   Install dependencies
   initialize             Initialize a new SSH CA key
+  clone                  Clone a previously initialized CA key to a new YubiKey
+  database               Manage the database
   export                 Export an SSH public key or certificate
   list                   List imported public keys and certificates
   show-certificate       Show an SSH certificate
