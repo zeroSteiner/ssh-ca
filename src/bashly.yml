@@ -133,6 +133,21 @@ commands:
     help: The destination YubiKey's serial number
     validate: yubikey_serial_exists
 
+- name: database
+  alias: db
+  help: Manage the database
+  dependencies:
+    psql: "install with the install-dependencies command"
+  flags:
+  - *database
+
+  commands:
+  - name: schema
+    help: Show the current database schema
+
+  - name: upgrade
+    help: Upgrade the database schema
+
 - name: export
   help: Export an SSH public key or certificate
   dependencies:

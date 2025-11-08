@@ -50,6 +50,7 @@ psql_schema_upgrade() {
     local latest_version="$(psql_schema_latest_version)"
 
     if [ "$current_version" -ge "$latest_version" ]; then
+        printf "The database schema is already current.\n"
         return 0
     fi
 
