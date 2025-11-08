@@ -1,4 +1,4 @@
-initialize_schema_v001() {
+psql_schema_initialize_v001() {
     _psql <<'EOF'
         SET client_min_messages = WARNING;
 

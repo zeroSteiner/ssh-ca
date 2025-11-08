@@ -39,7 +39,7 @@ EOF
 
 psql_schema_latest_version() {
     local version=1
-    while declare -f $(printf "initialize_schema_v%03d" "$version") > /dev/null; do
+    while declare -f $(printf "psql_schema_initialize_v%03d" "$version") > /dev/null; do
         ((version++))
     done
     echo $((version - 1))
@@ -60,7 +60,7 @@ psql_schema_upgrade() {
 
     # Run each migration in sequence
     for ((version=current_version+1; version<=latest_version; version++)); do
-        local function_name=$(printf "initialize_schema_v%03d" "$version")
+        local function_name=$(printf "psql_schema_initialize_v%03d" "$version")
 
         echo "Running database migration: ${function_name}"
         "$function_name" &>/dev/null
