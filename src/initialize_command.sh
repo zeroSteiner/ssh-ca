@@ -2,7 +2,7 @@ ca_priv_key="${args[filename]}"
 ca_pub_key="$ca_priv_key.pub"
 
 printf "Initializing the database..."
-psql_initialize > /dev/null
+psql_schema_upgrade > /dev/null
 printf " done.\n"
 
 set -- ${args[yubikey-serial]}

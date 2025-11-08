@@ -1,65 +1,14 @@
 _psql() {
     psql_args=("$@")
+    psql "$(psql_database_uri)" --set ON_ERROR_STOP=1 "${psql_args[@]}"
+}
+
+psql_database_uri() {
     if [[ -v args[--database] && "${args[--database]}" ]]; then
-        database_uri="${args[--database]}"
+        echo "${args[--database]}"
     elif [[ -v SSH_CA_DATABASE_URI ]]; then
-        database_uri="$SSH_CA_DATABASE_URI"
+        echo "$SSH_CA_DATABASE_URI"
     fi
-    psql "$database_uri" --set ON_ERROR_STOP=1 "${psql_args[@]}"
-}
-
-psql_current_schema_version() {
-    local version=$(_psql -tAc 'SELECT schema_version FROM metadata LIMIT 1;' 2> /dev/null)
-
-    if [ -n "$version" ]; then
-        echo "$version"
-        return
-    fi
-
-    # Check if public_keys exists
-    if _psql -tA <<'EOF' | grep -q 't'
-SELECT EXISTS (
-    SELECT FROM information_schema.tables
-    WHERE table_schema = 'public'
-    AND table_name = 'public_keys'
-);
-EOF
-    then
-        echo 1
-        return
-    fi
-
-    echo 0
-    return
-}
-
-psql_latest_schema_version() {
-    local version=1
-    while declare -f $(printf "initialize_schema_v%03d" "$version") > /dev/null; do
-        ((version++))
-    done
-    echo $((version - 1))
-}
-
-psql_initialize() {
-    local current_version="$(psql_current_schema_version)"
-    local latest_version="$(psql_latest_schema_version)"
-
-    if [ "$current_version" -ge "$latest_version" ]; then
-        return 0
-    fi
-
-    printf "Migrating database schema from $current_version -> $latest_version\n"
-
-    local num_migrations=$((latest_version - current_version))
-
-    # Run each migration in sequence
-    for ((version=current_version+1; version<=latest_version; version++)); do
-        local function_name=$(printf "initialize_schema_v%03d" "$version")
-
-        echo "Running database migration: ${function_name}"
-        "$function_name" &>/dev/null
-    done
 }
 
 # usage: psql_export_certificate $fingerprint
