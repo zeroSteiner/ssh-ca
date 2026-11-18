@@ -38,7 +38,7 @@ validate_file_writable() {
 }
 
 validate_is_openssh_public_key() {
-    file -Lb "$1" | grep -Ei 'OpenSSH \w+ public key' &> /dev/null || echo "invalid OpenSSH public key: $1 (not a public key)"
+    file -Lb -- "$1" | grep -Ei 'OpenSSH \w+ public key' &> /dev/null || echo "invalid OpenSSH public key: $1 (not a public key)"
     if [[ ! "$1" =~ \.pub$ ]]; then
         echo "invalid OpenSSH public key: $1 (filename must end in .pub)"
     fi

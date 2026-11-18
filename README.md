@@ -39,7 +39,7 @@ Commands:
 ```
 
 ## Building
-To build the project, use `rake`. The default target will build the application and documentation. Optionally run `rake install` to install it locally.
+Building requires Ruby 3.3 or newer (needed by bashly 2.x). Install the build dependencies with `bundle install`, then use `bundle exec rake` to build. The default target will build the application and documentation. Optionally run `bundle exec rake install` to install it locally.
 
 ### Building Documentation
-Currently, documentation is provied by [bashly.dev](https://bashly.dev/advanced/rendering/). All supported formats can be built at once using `rake docs:all`.
+Currently, documentation is provied by [bashly.dev](https://bashly.dev/advanced/rendering/). All supported formats can be built at once using `bundle exec rake docs:all`.
