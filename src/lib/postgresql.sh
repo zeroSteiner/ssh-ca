@@ -165,3 +165,43 @@ psql_upsert_public_key() {
         ON CONFLICT (data) DO UPDATE SET description = EXCLUDED.description
 EOF
 }
+
+# usage: psql_public_key_summary $public_key_path
+# Print "created_on|description|certificate_count|latest_created_on|latest_description", separated
+# by the ASCII unit separator (\x1f) so empty fields survive `read`. Prints nothing
+# when the key is not in the database.
+psql_public_key_summary() {
+    read -r public_key_type public_key public_key_comment < <(cat "$1")
+    _psql -t -A -F $'\x1f' \
+        -v public_key="$public_key" \
+        <<'EOF_SQL'
+        SELECT
+            pk.created_on,
+            coalesce(pk.description, ''),
+            count(c.id),
+            coalesce(max(c.created_on)::text, ''),
+            coalesce((
+                SELECT description FROM certificates
+                WHERE public_key_id = pk.id
+                ORDER BY created_on DESC, id DESC
+                LIMIT 1
+            ), '')
+        FROM public_keys pk
+        LEFT JOIN certificates c ON c.public_key_id = pk.id
+        WHERE pk.data = decode(:'public_key', 'base64')
+        GROUP BY pk.id
+EOF_SQL
+}
+
+# usage: psql_certificate_fingerprint $certificate_path
+# Print the fingerprint that the list and export commands use for a stored certificate.
+psql_certificate_fingerprint() {
+    read -r certificate_type certificate certificate_comment < <(cat "$1")
+    _psql -t -A \
+        -v certificate="$certificate" \
+        <<'EOF_SQL'
+        SELECT regexp_replace(concat('SHA256:', encode(data_sha256, 'base64')), '=+$', '')
+        FROM certificates
+        WHERE data = decode(:'certificate', 'base64')
+EOF_SQL
+}
