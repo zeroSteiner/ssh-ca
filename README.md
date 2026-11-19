@@ -35,8 +35,23 @@ Commands:
   show-certificate       Show an SSH certificate
   sign-host              Sign a host key
   sign-user              Sign a user key
+  taildrop               Receive keys over Taildrop and send back signed certificates
   upsert                 Upsert a file in to the database
 ```
+
+### Signing over Taildrop
+`ssh-ca taildrop sign-user` signs a key that a device sends over [Taildrop](https://tailscale.com/kb/1106/taildrop). The device only needs Tailscale. It takes the same signing options as `sign-user`, but the user's public key comes over Taildrop instead of being passed as an argument:
+
+```
+ssh-ca taildrop sign-user --peer my-phone -p alice -V +90D ca.pub alice@my-phone
+```
+
+1. ssh-ca prints the commands to run on the device: `tailscale file cp ~/.ssh/id_ed25519.pub <ca-host>:` sends the key (or use the share sheet on Android/iOS), and `tailscale file get --wait --conflict=overwrite ~/.ssh/` waits for the certificate. ssh-ca then waits for one file.
+1. It shows the received key: its fingerprint and randomart, whether it is already in the database, and the exact certificate that will be issued. Taildrop doesn't report who sent a file, so compare the fingerprint with `ssh-keygen -lf` on the device.
+1. Nothing is signed unless you answer `y` to `Sign this key? [y/N]`. Anything else discards the key.
+1. The certificate is stored in the database and sent back to `--peer`. Without `--peer`, you pick the device from a list. If sending fails, the certificate is saved in the current directory.
+
+Anything that isn't exactly one OpenSSH public key (several files, a private key, a certificate, ...) is never signed. It's moved to a `taildrop-rejected-<timestamp>` directory, so unrelated files in the Taildrop inbox aren't lost. Taildrop needs root unless you are the Tailscale operator, so ssh-ca falls back to `sudo` when tailscale denies access. Run `sudo tailscale set --operator=$USER` once to avoid that.
 
 ## Building
 Building requires Ruby 3.3 or newer (needed by bashly 2.x). Install the build dependencies with `bundle install`, then use `bundle exec rake` to build. The default target will build the application and documentation. Optionally run `bundle exec rake install` to install it locally.

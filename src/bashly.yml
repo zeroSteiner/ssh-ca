@@ -270,6 +270,53 @@ commands:
     required: true
     help: The user's identity
 
+- name: taildrop
+  help: Receive keys over Taildrop and send back signed certificates
+
+  commands:
+  - name: sign-user
+    help: Wait for a user key sent over Taildrop, confirm it, sign it and send the certificate back
+    dependencies:
+      psql: "install with the install-dependencies command"
+      ssh-keygen: "install with the install-dependencies command"
+      yubico-piv-tool: "install with the install-dependencies command"
+      tailscale: "install from https://tailscale.com/download"
+
+    variables:
+    - name: default_signing_options
+      value: *default_signing_options
+
+    flags:
+    - *database
+
+    - *description_signing_option
+
+    - long: --option
+      arg: option
+      help: Options to add to the certificate
+      repeatable: true
+      validate: is_valid_signing_option
+      default: *default_signing_options
+
+    - long: --peer
+      arg: peer
+      help: The Taildrop target to send the certificate to (chosen interactively when omitted)
+      validate: is_taildrop_target
+
+    - *principal_signing_option
+
+    - *validity_interval_signing_option
+
+    args:
+    - name: ca-public-key
+      required: true
+      help: The CA's public key with which to sign
+      validate: is_openssh_public_key
+
+    - name: user-identity
+      required: true
+      help: The user's identity
+
 - name: upsert
   help: Upsert a file in to the database
   dependencies:

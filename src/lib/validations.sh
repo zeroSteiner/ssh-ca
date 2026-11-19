@@ -121,3 +121,14 @@ validate_is_valid_validity_interval() {
 validate_yubikey_serial_exists() {
     ykman --device "$1" info &> /dev/null || echo "invalid Yubikey serial number: $1"
 }
+
+validate_is_taildrop_target() {
+    local targets
+    if ! targets="$(tailscale_targets 2> /dev/null)"; then
+        echo "could not list Taildrop targets"
+        return
+    fi
+    if ! awk -F'\t' -v name="$1" '$1 == name { found = 1 } END { exit !found }' <<< "$targets"; then
+        echo "not a Taildrop target: $1 (see: tailscale file cp --targets)"
+    fi
+}
